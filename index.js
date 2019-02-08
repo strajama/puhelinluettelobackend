@@ -1,8 +1,29 @@
 const express = require('express')
 const app = express()
 const bodyParser = require('body-parser')
+const morgan = require('morgan')
+const cors = require('cors')
+
+app.use(cors())
 
 app.use(bodyParser.json())
+
+app.use(morgan('tiny', {
+  skip: (request) => { return request.method === 'POST' }
+}))
+
+app.use(morgan((tokens, req, res) => {
+  return [
+    tokens.method(req, res),
+    tokens.url(req, res),
+    tokens.status(req, res),
+    tokens.res(req, res, 'content-length'), '-',
+    tokens['response-time'](req, res), 'ms',
+    JSON.stringify(req.body)
+  ].join(' ')
+}, {
+  skip: (request) => { return request.method !== 'POST' }
+}))
 
 let persons = [
   {
@@ -91,7 +112,7 @@ app.get('/info', (req, res) => {
             <p>${new Date()}</p>`)
 })
 
-const PORT = 3001
+const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
 })
