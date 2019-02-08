@@ -84,11 +84,11 @@ const generateId = () => {
 app.post('/api/persons', (request, response) => {
   const body = request.body
 
-  if (body.name === undefined) {
+  if (body.name === undefined || body.name === '') {
     return response.status(400).json({ error: `there is no name` })
   }
 
-  if (body.number === undefined) {
+  if (body.number === undefined || body.number === '') {
     return response.status(400).json({ error: `there is no number` })
   }
 
