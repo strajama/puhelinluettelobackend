@@ -37,6 +37,7 @@ app.get('/api/persons', (req, res) => {
 
 app.get('/api/persons/:id', (request, response) => {
   const id = Number(request.params.id)
+  const person = persons.find(person => person.id === id)
   if (person) {
     response.json(person)
   } else {
@@ -63,9 +64,15 @@ app.post('/api/persons', (request, response) => {
   const body = request.body
 
   if (body.name === undefined) {
-    return response.status(400).json({ 
-      error: 'content missing' 
-    })
+    return response.status(400).json({ error: `there is no name` })
+  }
+
+  if (body.number === undefined) {
+    return response.status(400).json({ error: `there is no number` })
+  }
+
+  if (persons.find(person => person.name === body.name)) {
+    return response.status(400).json({ error: `${body.name} is already in phonebook`})
   }
 
   const person = {
