@@ -28,8 +28,6 @@ app.use(morgan((tokens, req, res) => {
   skip: (request) => { return request.method !== 'POST' }
 }))
 
-// mongodb
-
 let persons = [
   {
     "name": "Arto Hellas",
@@ -63,32 +61,44 @@ app.get('/api/persons', (req, res) => {
   })
 })
 
-app.get('/api/persons/:id', (request, response) => {
+app.get('/api/persons/:id', (request, response, next) => {
   Person.findById(request.params.id)
     .then(person => {
       person
       ? response.json(person.toJSON())
       : response.status(404).end()
     })
-    .catch(error => {
-      console.log(error)
-      response.status(400).send({ error: 'malformatted id' })
+    .catch(error => next(error))
+})
+
+app.delete('/api/persons/:id', (request, response, next) => {
+  Person.findByIdAndRemove(request.params.id)
+    .then(result => {
+      response.status(204).end()
     })
+    .catch(error => next(error()))
 })
 
-app.delete('/api/persons/:id', (request, response) => {
-  const id = Number(request.params.id);
-  persons = persons.filter(person => person.id !== id);
+app.put('/api/persons/:id', (request, response, next) => {
+  const body = request.body
 
-  response.status(204).end();
+  const person = {
+    name: body.name,
+    number: body.number,
+  }
+  Person.findByIdAndUpdate(request.params.id, person, { new: true })
+    .then(updatedPerson => {
+      response.json(updatedPerson.toJSON())
+    })
+    .catch(error => next(error))
 })
-
+/*
 const generateId = () => {
   const maxId = persons.length > 0
     ? Math.max(...persons.map(n => n.id))
     : 0
   return maxId + 1
-}
+}*/
 
 app.post('/api/persons', (request, response) => {
   const body = request.body
@@ -101,10 +111,6 @@ app.post('/api/persons', (request, response) => {
     return response.status(400).json({ error: `number missing` })
   }
 
-/*  if (persons.find(person => person.name === body.name)) {
-    return response.status(400).json({ error: `${body.name} is already in phonebook`})
-  }*/
-
   const person = new Person({
     name: body.name,
     number: body.number,
@@ -116,9 +122,31 @@ app.post('/api/persons', (request, response) => {
 })
 
 app.get('/info', (req, res) => {
-  res.send(`<p>Puhelinluettelossa on ${persons.length} henkilön tiedot</p>
-            <p>${new Date()}</p>`)
+  Person.countDocuments({}, function (err, count) {
+    let persons = count
+    res.send(`<p>Puhelinluettelossa on ${persons} henkilön tiedot</p>
+    <p>${new Date()}</p>`)
+  })
 })
+
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: 'unknown endpoint' })
+}
+
+// olemattomien osoitteiden käsittely
+app.use(unknownEndpoint)
+
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message)
+
+  if (error.name === 'CastError' && error.kind == 'ObjectId') {
+    return response.status(400).send({ error: 'malformatted id' })
+  } 
+
+  next(error)
+}
+
+app.use(errorHandler)
 
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
