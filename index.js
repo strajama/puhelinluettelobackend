@@ -1,13 +1,16 @@
+require('dotenv').config()
 const express = require('express')
 const app = express()
 const bodyParser = require('body-parser')
 const morgan = require('morgan')
 const cors = require('cors')
+const Person = require('./models/person')
 
 app.use(express.static('build'))
 app.use(cors())
 app.use(bodyParser.json())
 
+// morgan
 app.use(morgan('tiny', {
   skip: (request) => { return request.method === 'POST' }
 }))
@@ -24,6 +27,8 @@ app.use(morgan((tokens, req, res) => {
 }, {
   skip: (request) => { return request.method !== 'POST' }
 }))
+
+// mongodb
 
 let persons = [
   {
@@ -53,18 +58,22 @@ app.get('/', (req, res) => {
 })
 
 app.get('/api/persons', (req, res) => {
-  res.json(persons)
+  Person.find({}).then(persons => {
+    res.json(persons.map(person => person.toJSON()))
+  })
 })
 
 app.get('/api/persons/:id', (request, response) => {
-  const id = Number(request.params.id)
-  const person = persons.find(person => person.id === id)
-  if (person) {
-    response.json(person)
-  } else {
-    response.status(404).end()
-  }
-  response.json(person)
+  Person.findById(request.params.id)
+    .then(person => {
+      person
+      ? response.json(person.toJSON())
+      : response.status(404).end()
+    })
+    .catch(error => {
+      console.log(error)
+      response.status(400).send({ error: 'malformatted id' })
+    })
 })
 
 app.delete('/api/persons/:id', (request, response) => {
@@ -85,26 +94,25 @@ app.post('/api/persons', (request, response) => {
   const body = request.body
 
   if (body.name === undefined) {
-    return response.status(400).json({ error: `there is no name` })
+    return response.status(400).json({ error: `name missing` })
   }
 
   if (body.number === undefined) {
-    return response.status(400).json({ error: `there is no number` })
+    return response.status(400).json({ error: `number missing` })
   }
 
-  if (persons.find(person => person.name === body.name)) {
+/*  if (persons.find(person => person.name === body.name)) {
     return response.status(400).json({ error: `${body.name} is already in phonebook`})
-  }
+  }*/
 
-  const person = {
+  const person = new Person({
     name: body.name,
     number: body.number,
-    id: generateId(),
-  }
-
-  persons = persons.concat(person)
-
-  response.json(person)
+//    id: generateId(),
+  })
+  person.save().then(savedPerson => {
+    response.json(savedPerson.toJSON())
+  })
 })
 
 app.get('/info', (req, res) => {
