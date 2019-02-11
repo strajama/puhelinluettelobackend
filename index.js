@@ -1,4 +1,6 @@
-require('dotenv').config()
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config()
+}
 const express = require('express')
 const app = express()
 const bodyParser = require('body-parser')
@@ -100,7 +102,7 @@ const generateId = () => {
   return maxId + 1
 }*/
 
-app.post('/api/persons', (request, response) => {
+app.post('/api/persons', (request, response, next) => {
   const body = request.body
 
   if (body.name === undefined) {
@@ -111,14 +113,21 @@ app.post('/api/persons', (request, response) => {
     return response.status(400).json({ error: `number missing` })
   }
 
+  if (Person.find({name: body.name})) {
+    return response.status(400).json({error: `person already exists`})
+  }
+
   const person = new Person({
     name: body.name,
     number: body.number,
 //    id: generateId(),
   })
-  person.save().then(savedPerson => {
-    response.json(savedPerson.toJSON())
-  })
+  person
+    .save()
+    .then(savedPerson => {
+      response.json(savedPerson.toJSON())
+    })
+    .catch(error => next(error))
 })
 
 app.get('/info', (req, res) => {
@@ -141,8 +150,10 @@ const errorHandler = (error, request, response, next) => {
 
   if (error.name === 'CastError' && error.kind == 'ObjectId') {
     return response.status(400).send({ error: 'malformatted id' })
+  } else if (error.name === 'ValidationError') {
+    console.log('validation error')
+    return response.status(400).json({ error: error.message })
   } 
-
   next(error)
 }
 
