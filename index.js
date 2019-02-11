@@ -113,9 +113,10 @@ app.post('/api/persons', (request, response, next) => {
     return response.status(400).json({ error: `number missing` })
   }
 
-  if (Person.find({name: body.name})) {
+/*  if (Person.findOne({})) {
+    console.log(body.name)
     return response.status(400).json({error: `person already exists`})
-  }
+  }*/
 
   const person = new Person({
     name: body.name,

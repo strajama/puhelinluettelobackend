@@ -1,5 +1,5 @@
 const mongoose = require('mongoose')
-const uniqueValidator = require('mongoose-unique-validator')
+
 
 if ( process.argv.length<3 ) {
   console.log('give password as argument')
